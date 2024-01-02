@@ -1,55 +1,67 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
+import sys
 
-df = pd.read_csv("combined_pre.csv")
+DATASET_FILE = "combined.csv"
 
-# drop time and station id
-df = df.drop(["TIME", "AVAILABLE BIKE STANDS"], axis=1)
 
-# # normalize all values
-df = (df - df.min()) / (df.max() - df.min())
+if __name__ == "__main__":
+    # check args
+    print("CMD:", sys.argv)
+    if len(sys.argv) < 2 or sys.argv[1] not in ("in", "out"):
+        print("Please provide in/out argument!")
+        sys.exit(1)
+    output_feature = "USAGE_OUT" if sys.argv[1] == "out" else "USAGE_IN"
 
-# input and output
-x = df.drop(["USAGE_OUT", "USAGE_IN"], axis=1)
-y = df["USAGE_OUT"]
+    df = pd.read_csv(DATASET_FILE)
 
-print("Input Params")
-print(x)
+    # drop time and station id
+    df = df.drop(["TIME", "AVAILABLE BIKE STANDS"], axis=1)
 
-print("\nOutput Params")
-print(y)
+    # # normalize all values
+    df = (df - df.min()) / (df.max() - df.min())
 
-print("\n--- LINEAR REGRESSION ---\n")
-model = LinearRegression().fit(x, y)
+    # input and output
+    x = df.drop(["USAGE_OUT", "USAGE_IN"], axis=1)
+    y = df[output_feature]
 
-print("Intercept", model.intercept_)
+    print("Input Params")
+    print(x)
 
-coefficients = model.coef_
-res = []
-# Display the coefficients for each input feature
-for i, column in enumerate(x.columns):
-    res.append({
-        "Parameter": column,
-        "Coefficient": coefficients[i],
-        "Weight":  coefficients[i] * (x[column].max() - x[column].min() ) / x[column].std()
-    })
+    print("\nOutput Params")
+    print(y)
 
-print(pd.DataFrame(res))
+    print("\n--- PEARSON CORRELATION ---\n")
+    print(df[list(x.columns) + [output_feature]].corr()[output_feature])
 
-print("\n--- RANDOM FOREST ---\n")
-model = RandomForestRegressor().fit(x, y)
+    # print("\n--- LINEAR REGRESSION ---\n")
+    # model = LinearRegression().fit(x, y)
 
-feature_importances = model.feature_importances_
-res = []
-# Display the feature_importances for each input feature
-for i, column in enumerate(x.columns):
-    res.append({
-        "Parameter": column,
-        "Importance": feature_importances[i],
-    })
+    # print("Intercept", model.intercept_)
 
-print(pd.DataFrame(res))
+    # coefficients = model.coef_
+    # res = []
+    # # Display the coefficients for each input feature
+    # for i, column in enumerate(x.columns):
+    #     res.append({
+    #         "Parameter": column,
+    #         "Coefficient": coefficients[i],
+    #         "Weight":  coefficients[i] * (x[column].max() - x[column].min() ) / x[column].std()
+    #     })
 
-print("\n---PEARSON CORRELATION ---\n")
-print(df[list(x.columns) + ["USAGE_OUT"]].corr()["USAGE_OUT"])
+    # print(pd.DataFrame(res))
+
+    # print("\n--- RANDOM FOREST ---\n")
+    # model = RandomForestRegressor().fit(x, y)
+
+    # feature_importances = model.feature_importances_
+    # res = []
+    # # Display the feature_importances for each input feature
+    # for i, column in enumerate(x.columns):
+    #     res.append({
+    #         "Parameter": column,
+    #         "Importance": feature_importances[i],
+    #     })
+
+    # print(pd.DataFrame(res))

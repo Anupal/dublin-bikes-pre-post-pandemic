@@ -6,57 +6,30 @@ from holidays import check_public_holiday, check_weekend
 import sys
 
 DATASET_ORG_DIR = "dataset_org"
-DATASET_PROC_DIR = "dataset_proc"
 SELECTED_COLUMNS = ["STATION ID", "TIME", "BIKE STANDS", "AVAILABLE BIKE STANDS"]
-SELECTED_COLUMNS_ALT = ["STATION ID", "TIME", "BIKE_STANDS", "AVAILABLE_BIKE_STANDS"]
 WEATHER_FILE = "weather.csv"
-PRE_YEARS = ("dublinbikes_2018", "dublinbikes_2019")
-POST_YEARS = ("dublinbikes_2020", "dublinbikes_2021", "2022", "2023")
-
-
-def filter_files(flag, files):
-    res = []
-    year_set = PRE_YEARS if flag == "pre" else POST_YEARS
-    for file in files:
-        for filter in year_set:
-            if filter in file:
-                res.append(file)
-                break
-    return res
-
 
 if __name__ == "__main__":
-    # check args
-    print("CMD:", sys.argv)
-    if len(sys.argv) < 2 or sys.argv[1] not in ("pre", "post"):
-        print("Please provide pre/post argument!")
-        sys.exit(1)
-    flag = sys.argv[1]
-
     if not os.path.exists(DATASET_ORG_DIR):
         print(f"Directory '{DATASET_ORG_DIR}' does not exist!")
         sys.exit(1)
 
-    DATASET_PROC_DIR += "_" + flag
-    if not os.path.exists(DATASET_PROC_DIR):
-        os.makedirs(DATASET_PROC_DIR)
-        print(f"Directory '{DATASET_PROC_DIR}' created.")
-
     # loop over all csv files
-    file_list = os.listdir(DATASET_ORG_DIR)
+    file_list = [file for file in os.listdir(DATASET_ORG_DIR) if "dublinbikes" in file]
     combined_csv_list = []
-    for file in filter_files(flag, file_list):
+    for file in file_list:
         print(f"processing {os.path.join(DATASET_ORG_DIR, file)}")
         df = pd.read_csv(os.path.join(DATASET_ORG_DIR, file))
         df["TIME"] = pd.to_datetime(df["TIME"])
         
         # workaround for different labels in monthly CSVs
         if "BIKE STANDS" in df:
-            df = df[SELECTED_COLUMNS]
             quarterly = True
         else:
-            df = df[SELECTED_COLUMNS_ALT].rename(columns=dict(zip(SELECTED_COLUMNS_ALT, SELECTED_COLUMNS)))
+            df.rename(columns={"BIKE_STANDS": "BIKE STANDS", "AVAILABLE_BIKE_STANDS": "AVAILABLE BIKE STANDS"}, inplace=True)
             quarterly = False
+        
+        df = df[SELECTED_COLUMNS]
 
         group_dfs = {station_id: group_df for station_id, group_df in df.groupby("STATION ID")}
         res = []
@@ -64,11 +37,7 @@ if __name__ == "__main__":
             # only for old quaterly samples
             # workaround to collect 30 mins samples to match monthly samples which are every 30 mins
             if quarterly:
-                group_df.set_index("TIME", inplace=True)
-                hourly_first_samples = group_df.resample('H').first()
-                hourly_last_samples = group_df.resample('H').last()
-                group_df = pd.concat([hourly_first_samples, hourly_last_samples], ignore_index=False)
-                group_df.reset_index(drop=False, inplace=True)
+                group_df = group_df.iloc[::6].copy()
             
             group_df = group_df.drop(["STATION ID"], axis=1)
 
@@ -79,7 +48,7 @@ if __name__ == "__main__":
             group_df = group_df.drop(["USAGE"], axis=1)
 
             group_df.set_index("TIME", inplace=True)
-            group_df = group_df.resample("H").mean() #.reset_index()
+            group_df = group_df.resample("H").sum() #.reset_index()
 
             group_df.reset_index(drop=False, inplace=True)
             res.append(group_df)
@@ -131,7 +100,17 @@ if __name__ == "__main__":
     station_avg_df["USAGE_OUT_LAST_1W"] = station_avg_df['USAGE_OUT'].shift(24*7).fillna(0)
 
     # last year
-    station_avg_df["USAGE_IN_LAST_1Y"] = station_avg_df['USAGE_IN'].shift(24*365).fillna(0)
-    station_avg_df["USAGE_OUT_LAST_1Y"] = station_avg_df['USAGE_OUT'].shift(24*365).fillna(0)
+    # station_avg_df["USAGE_IN_LAST_1Y"] = station_avg_df['USAGE_IN'].shift(24*365).fillna(0)
+    # station_avg_df["USAGE_OUT_LAST_1Y"] = station_avg_df['USAGE_OUT'].shift(24*365).fillna(0)
 
-    station_avg_df.to_csv(f"combined_{flag}.csv", index=False)
+    
+    # add mean to missing data points
+    station_avg_df.set_index("TIME", inplace=True)
+    new_index = pd.date_range(start=station_avg_df.index.min(), end=station_avg_df.index.max(), freq="1H")
+    station_avg_df = station_avg_df.reindex(new_index)
+
+    # Fill missing datapoints with mean
+    mean_values = station_avg_df.mean()
+    station_avg_df = station_avg_df.fillna(mean_values)
+
+    station_avg_df.to_csv(f"combined.csv", index_label="TIME")

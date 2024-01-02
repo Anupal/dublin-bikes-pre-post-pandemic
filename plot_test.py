@@ -11,19 +11,15 @@ import sys
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# load both pre and post covid
-pre_df = pd.read_csv("combined_pre.csv")
-post_df = pd.read_csv("combined_post.csv")
 
-# combine both
-df = pd.concat([pre_df, post_df], ignore_index=False)
+df = pd.read_csv("combined.csv")
 df["TIME"] = pd.to_datetime(df["TIME"])
 df.set_index("TIME", inplace=True)
 
 # filter weekdays
 # df = df[df['WEEKEND'] == 1]
 
-# take total entries for that hour across all stations
+# take total weekly total
 station_avg_df = df.resample("W").sum()
 station_avg_df.reset_index(drop=False, inplace=True)
 
