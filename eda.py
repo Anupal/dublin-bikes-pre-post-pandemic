@@ -1,19 +1,11 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-import sys
 
 DATASET_FILE = "combined.csv"
 
 
 if __name__ == "__main__":
-    # check args
-    print("CMD:", sys.argv)
-    if len(sys.argv) < 2 or sys.argv[1] not in ("in", "out"):
-        print("Please provide in/out argument!")
-        sys.exit(1)
-    output_feature = "USAGE_OUT" if sys.argv[1] == "out" else "USAGE_IN"
-
     df = pd.read_csv(DATASET_FILE)
 
     # drop time and station id
@@ -23,8 +15,8 @@ if __name__ == "__main__":
     df = (df - df.min()) / (df.max() - df.min())
 
     # input and output
-    x = df.drop(["USAGE_OUT", "USAGE_IN"], axis=1)
-    y = df[output_feature]
+    x = df.drop(["USAGE"], axis=1)
+    y = df["USAGE"]
 
     print("Input Params")
     print(x)
@@ -33,7 +25,7 @@ if __name__ == "__main__":
     print(y)
 
     print("\n--- PEARSON CORRELATION ---\n")
-    print(df[list(x.columns) + [output_feature]].corr()[output_feature])
+    print(df[list(x.columns) + ["USAGE"]].corr()["USAGE"])
 
     # print("\n--- LINEAR REGRESSION ---\n")
     # model = LinearRegression().fit(x, y)

@@ -42,10 +42,10 @@ if __name__ == "__main__":
             group_df = group_df.drop(["STATION ID"], axis=1)
 
             # generate usage columns
-            group_df["USAGE"] = group_df["AVAILABLE BIKE STANDS"].diff()
-            group_df['USAGE_IN'] = group_df['USAGE'].apply(lambda x: x if x > 0 else 0)
-            group_df['USAGE_OUT'] = group_df['USAGE'].apply(lambda x: -x if x < 0 else 0)
-            group_df = group_df.drop(["USAGE"], axis=1)
+            group_df["USAGE"] = group_df["AVAILABLE BIKE STANDS"].diff().abs()
+            # group_df['USAGE_IN'] = group_df['USAGE'].apply(lambda x: x if x > 0 else 0)
+            # group_df['USAGE_OUT'] = group_df['USAGE'].apply(lambda x: -x if x < 0 else 0)
+            # group_df = group_df.drop(["USAGE"], axis=1)
 
             group_df.set_index("TIME", inplace=True)
             group_df = group_df.resample("H").sum() #.reset_index()
@@ -92,16 +92,10 @@ if __name__ == "__main__":
 
     # add lagged features
     # last hour
-    station_avg_df["USAGE_IN_LAST_1H"] = station_avg_df['USAGE_IN'].shift(periods=1).fillna(0)
-    station_avg_df["USAGE_OUT_LAST_1H"] = station_avg_df['USAGE_OUT'].shift(periods=1).fillna(0)
+    station_avg_df["USAGE_LAST_1H"] = station_avg_df["USAGE"].shift(periods=1).fillna(0)
 
     # last week
-    station_avg_df["USAGE_IN_LAST_1W"] = station_avg_df['USAGE_IN'].shift(24*7).fillna(0)
-    station_avg_df["USAGE_OUT_LAST_1W"] = station_avg_df['USAGE_OUT'].shift(24*7).fillna(0)
-
-    # last year
-    # station_avg_df["USAGE_IN_LAST_1Y"] = station_avg_df['USAGE_IN'].shift(24*365).fillna(0)
-    # station_avg_df["USAGE_OUT_LAST_1Y"] = station_avg_df['USAGE_OUT'].shift(24*365).fillna(0)
+    station_avg_df["USAGE_LAST_1W"] = station_avg_df["USAGE"].shift(24*7).fillna(0)
 
     
     # add mean to missing data points
