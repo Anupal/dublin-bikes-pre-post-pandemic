@@ -70,7 +70,7 @@ if __name__ == "__main__":
     station_avg_df["PUBLIC HOLIDAY"] = station_avg_df["TIME"].apply(check_public_holiday)
     
     # add utilization column
-    station_avg_df["UTILIZATION"] = (station_avg_df["AVAILABLE BIKE STANDS"] / station_avg_df["BIKE STANDS"]).round(2)
+    # station_avg_df["UTILIZATION"] = (station_avg_df["AVAILABLE BIKE STANDS"] / station_avg_df["BIKE STANDS"]).round(2)
 
     # load weather csv
     weather_df = pd.read_csv(os.path.join(DATASET_ORG_DIR, WEATHER_FILE))
@@ -92,10 +92,10 @@ if __name__ == "__main__":
 
     # add lagged features
     # last hour
-    station_avg_df["USAGE_LAST_1H"] = station_avg_df["USAGE"].shift(periods=1).fillna(0)
+    # station_avg_df["USAGE_LAST_1H"] = station_avg_df["USAGE"].shift(periods=1).fillna(0)
 
-    # last week
-    station_avg_df["USAGE_LAST_1W"] = station_avg_df["USAGE"].shift(24*7).fillna(0)
+    # # last week
+    # station_avg_df["USAGE_LAST_1W"] = station_avg_df["USAGE"].shift(24*7).fillna(0)
 
     
     # add mean to missing data points
