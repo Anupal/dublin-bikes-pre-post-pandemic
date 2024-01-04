@@ -11,14 +11,22 @@ import sys
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 
 
 DATASET_FILE = "combined.csv"
 
 PANDEMIC_DATE = pd.to_datetime("2020-03-01")
 POST_PANDEMIC_DATE = pd.to_datetime("2021-06-30")
-ALPHA = 0.15
+{'max_depth': 10, 'min_samples_split': 10, 'n_estimators': 10}
+
+# MAX_DEPTH = 10
+# MIN_SAMPLES_SPLIT = 10
+# N_ESTIMATORS = 10
+
+MAX_DEPTH = 50
+MIN_SAMPLES_SPLIT = 2
+N_ESTIMATORS = 20
 
 if __name__ == "__main__":
     df = pd.read_csv("combined.csv")
@@ -46,12 +54,25 @@ if __name__ == "__main__":
     # normalize x values
     x = (x - x.min()) / (x.max() - x.min())
 
-    lasso = Lasso(alpha=ALPHA).fit(x, y)
+    rf = RandomForestRegressor(max_depth=MAX_DEPTH, min_samples_split=MIN_SAMPLES_SPLIT, n_estimators=N_ESTIMATORS).fit(x, y)
+    
+    print("FEATURE IMPORTANCE")
+    feature_importances = rf.feature_importances_
+    res = []
+    # Display the feature_importances for each input feature
+    for i, column in enumerate(x.columns):
+        res.append({
+            "Parameter": column,
+            "Importance": feature_importances[i],
+        })
+    
+    print(pd.DataFrame(res))
+    
     x_pred = df.drop(["USAGE", "TIME", "AVAILABLE BIKE STANDS"], axis=1)
     # normalize x values
     x_pred = (x_pred - x_pred.min()) / (x_pred.max() - x_pred.min())
 
-    df['predicted_USAGE'] = lasso.predict(x_pred)
+    df['predicted_USAGE'] = rf.predict(x_pred)
 
     # change to weekly samples
     df["TIME"] = pd.to_datetime(time_column)
@@ -59,16 +80,17 @@ if __name__ == "__main__":
     station_sum_df = df.resample("W").sum()
     station_sum_df.reset_index(drop=False, inplace=True)
 
-    lasso_station_sum_df = station_sum_df[station_sum_df["TIME"] > PANDEMIC_DATE]
+    rf_station_sum_df = station_sum_df[station_sum_df["TIME"] > PANDEMIC_DATE]
 
     fig = go.Figure()
     trace_usage = go.Scatter(x=station_sum_df["TIME"], y=station_sum_df["USAGE"], mode='lines+markers', name='Usage')
 
-    # Add lasso regression line
-    trace_usage_lasso = go.Scatter(x=station_sum_df["TIME"], y=station_sum_df["predicted_USAGE"], mode='lines+markers', name='Lasso Usage')
+    # Add rf regression line
+    trace_usage_rf = go.Scatter(x=station_sum_df["TIME"], y=station_sum_df["predicted_USAGE"], mode='lines+markers', name='RF Usage')
 
-    fig.add_traces([trace_usage, trace_usage_lasso])
+    fig.add_traces([trace_usage, trace_usage_rf])
 
     # Update layout and display the figure
     fig.update_layout(title='Original and predicted usage overall')
     fig.show()
+    
