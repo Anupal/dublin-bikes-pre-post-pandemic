@@ -101,7 +101,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # loop over all csv files
-    file_list = [file for file in os.listdir(DATASET_ORG_DIR) if "dublinbikes" in file]
+    file_list = [file for file in os.listdir(DATASET_ORG_DIR) if "dublinbikes" in file] + [file for file in os.listdir(DATASET_ORG_DIR) if "dublinbike-" in file]
     combined_csv_list = []
     print("PROCESSING FILES:")
     for file in file_list:
