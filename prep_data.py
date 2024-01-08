@@ -1,9 +1,95 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import os
 import pandas as pd
-from holidays import check_public_holiday, check_weekend
 import sys
+
+ALL_PUBLIC_HOLIDAYS = {
+    "2018-08-06",
+    "2018-10-29",
+    "2018-12-25",
+    "2018-12-26",
+    "2019-01-01",
+    "2019-03-17",
+    "2019-04-22",
+    "2019-05-06",
+    "2019-06-03",
+    "2019-08-05",
+    "2019-10-28",
+    "2019-12-25",
+    "2019-12-26",
+    "2020-01-01",
+    "2020-03-17",
+    "2020-04-13",
+    "2020-05-04",
+    "2020-06-01",
+    "2020-08-03",
+    "2020-10-26",
+    "2020-12-25",
+    "2020-12-26",
+    "2021-01-01",
+    "2020-03-17",
+    "2020-04-05",
+    "2020-05-03",
+    "2020-06-07",
+    "2020-08-02",
+    "2020-10-25",
+    "2020-12-25",
+    "2020-12-26",
+    "2021-01-01",
+    "2021-03-17",
+    "2021-03-18",
+    "2021-04-18",
+    "2021-05-02",
+    "2021-06-06",
+    "2021-08-01",
+    "2021-10-31",
+    "2021-12-25",
+    "2021-12-26",
+    "2022-01-01",
+    "2022-03-17",
+    "2022-03-18",
+    "2022-04-18",
+    "2022-05-02",
+    "2022-06-06",
+    "2022-08-01",
+    "2022-10-31",
+    "2022-12-25",
+    "2022-12-26",
+    "2023-01-01",
+    "2023-02-06",
+    "2023-03-17",
+    "2023-04-10",
+    "2023-05-01",
+    "2023-06-05",
+    "2023-08-07",
+    "2023-10-30",
+    "2023-12-25",
+    "2023-12-26",
+}
+
+def weekends_by_year(year):
+    start_date = datetime(year, 1, 1)
+    end_date = datetime(year, 12, 31)
+    weekends = set()
+
+    current_date = start_date
+    while current_date <= end_date:
+        if current_date.weekday() in [5, 6]:  # 5 is Saturday, 6 is Sunday
+            weekends.add(current_date.strftime('%Y-%m-%d'))
+        current_date += timedelta(days=1)
+
+    return weekends
+
+ALL_WEEKENDS = set()
+for year in (2018, 2019, 2020, 2021, 2022, 2023):
+    ALL_WEEKENDS.update(weekends_by_year(year))
+
+def check_weekend(date_obj):
+    return int(date_obj.strftime('%Y-%m-%d') in ALL_WEEKENDS)
+
+def check_public_holiday(date_obj):
+    return int(date_obj.strftime('%Y-%m-%d') in ALL_PUBLIC_HOLIDAYS)
 
 DATASET_ORG_DIR = "dataset_org"
 SELECTED_COLUMNS = ["STATION ID", "TIME", "BIKE STANDS", "AVAILABLE BIKE STANDS"]
@@ -17,8 +103,9 @@ if __name__ == "__main__":
     # loop over all csv files
     file_list = [file for file in os.listdir(DATASET_ORG_DIR) if "dublinbikes" in file]
     combined_csv_list = []
+    print("PROCESSING FILES:")
     for file in file_list:
-        print(f"processing {os.path.join(DATASET_ORG_DIR, file)}")
+        print(f"{os.path.join(DATASET_ORG_DIR, file)}")
         df = pd.read_csv(os.path.join(DATASET_ORG_DIR, file))
         df["TIME"] = pd.to_datetime(df["TIME"])
         
@@ -26,6 +113,7 @@ if __name__ == "__main__":
         if "BIKE STANDS" in df:
             quarterly = True
         else:
+            print("    + label corrections")
             df.rename(columns={"BIKE_STANDS": "BIKE STANDS", "AVAILABLE_BIKE_STANDS": "AVAILABLE BIKE STANDS"}, inplace=True)
             quarterly = False
         
@@ -33,6 +121,7 @@ if __name__ == "__main__":
 
         group_dfs = {station_id: group_df for station_id, group_df in df.groupby("STATION ID")}
         res = []
+        print("    + combine csv for all station ids")
         for station_id, group_df in group_dfs.items():
             # only for old quaterly samples
             # workaround to collect 30 mins samples to match monthly samples which are every 30 mins
@@ -43,9 +132,6 @@ if __name__ == "__main__":
 
             # generate usage columns
             group_df["USAGE"] = group_df["AVAILABLE BIKE STANDS"].diff().abs()
-            # group_df['USAGE_IN'] = group_df['USAGE'].apply(lambda x: x if x > 0 else 0)
-            # group_df['USAGE_OUT'] = group_df['USAGE'].apply(lambda x: -x if x < 0 else 0)
-            # group_df = group_df.drop(["USAGE"], axis=1)
 
             group_df.set_index("TIME", inplace=True)
             group_df = group_df.resample("H").sum() #.reset_index()
@@ -70,7 +156,7 @@ if __name__ == "__main__":
     station_avg_df["PUBLIC HOLIDAY"] = station_avg_df["TIME"].apply(check_public_holiday)
     
     # add utilization column
-    # station_avg_df["UTILIZATION"] = (station_avg_df["AVAILABLE BIKE STANDS"] / station_avg_df["BIKE STANDS"]).round(2)
+    station_avg_df["UTILIZATION"] = (station_avg_df["AVAILABLE BIKE STANDS"] / station_avg_df["BIKE STANDS"]).round(2)
 
     # load weather csv
     weather_df = pd.read_csv(os.path.join(DATASET_ORG_DIR, WEATHER_FILE))
@@ -89,14 +175,6 @@ if __name__ == "__main__":
     station_avg_df.insert(0, 'MONTH', station_avg_df['TIME'].dt.month)
     station_avg_df.insert(0, 'DAY', station_avg_df['TIME'].dt.day)
     station_avg_df.insert(0, 'HOUR', station_avg_df['TIME'].dt.hour)
-
-    # add lagged features
-    # last hour
-    # station_avg_df["USAGE_LAST_1H"] = station_avg_df["USAGE"].shift(periods=1).fillna(0)
-
-    # # last week
-    # station_avg_df["USAGE_LAST_1W"] = station_avg_df["USAGE"].shift(24*7).fillna(0)
-
     
     # add mean to missing data points
     station_avg_df.set_index("TIME", inplace=True)
@@ -106,5 +184,8 @@ if __name__ == "__main__":
     # Fill missing datapoints with mean
     mean_values = station_avg_df.mean()
     station_avg_df = station_avg_df.fillna(mean_values)
+
+    # drop BIKE STANDS and UTILIZATION columns
+    station_avg_df = station_avg_df.drop(["BIKE STANDS", "AVAILABLE BIKE STANDS", "UTILIZATION"], axis=1)
 
     station_avg_df.to_csv(f"combined.csv", index_label="TIME")

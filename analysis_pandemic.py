@@ -1,38 +1,20 @@
-"""
-Plots weekly data for whole dataset.
-"""
-
-import os
 import pandas as pd
-from datetime import datetime
 import matplotlib.pyplot as plt
-import sys
-
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
 DATASET_FILE = "combined.csv"
 
 PANDEMIC_DATE = pd.to_datetime("2020-03-01")
-POST_PANDEMIC_DATE = pd.to_datetime("2021-06-30")
-{'max_depth': 10, 'min_samples_split': 10, 'n_estimators': 10}
-
-# MAX_DEPTH = 10
-# MIN_SAMPLES_SPLIT = 10
-# N_ESTIMATORS = 10
-
+POST_PANDEMIC_DATE = pd.to_datetime("2022-04-03")
 MAX_DEPTH = 50
-MIN_SAMPLES_SPLIT = 2
+MIN_SAMPLES_SPLIT = 10
 N_ESTIMATORS = 20
 
 if __name__ == "__main__":
     df = pd.read_csv("combined.csv")
-
-    # workaround: drop all lagged features
-    # df = df.drop(["USAGE_LAST_1H", "USAGE_LAST_1W", "UTILIZATION"], axis=1)
 
 
     df["TIME"] = pd.to_datetime(df["TIME"])
@@ -45,7 +27,7 @@ if __name__ == "__main__":
     training_df = df[df["TIME"] < PANDEMIC_DATE]
 
     # drop time and station id
-    training_df = training_df.drop(["TIME", "AVAILABLE BIKE STANDS"], axis=1)
+    training_df = training_df.drop(["TIME"], axis=1)
 
     # input and output
     x = training_df.drop(["USAGE"], axis=1)
@@ -68,7 +50,7 @@ if __name__ == "__main__":
     
     print(pd.DataFrame(res))
     
-    x_pred = df.drop(["USAGE", "TIME", "AVAILABLE BIKE STANDS"], axis=1)
+    x_pred = df.drop(["USAGE", "TIME"], axis=1)
     # normalize x values
     x_pred = (x_pred - x_pred.min()) / (x_pred.max() - x_pred.min())
 
@@ -82,15 +64,23 @@ if __name__ == "__main__":
 
     rf_station_sum_df = station_sum_df[station_sum_df["TIME"] > PANDEMIC_DATE]
 
-    fig = go.Figure()
-    trace_usage = go.Scatter(x=station_sum_df["TIME"], y=station_sum_df["USAGE"], mode='lines+markers', name='Usage')
 
-    # Add rf regression line
-    trace_usage_rf = go.Scatter(x=station_sum_df["TIME"], y=station_sum_df["predicted_USAGE"], mode='lines+markers', name='RF Usage')
+    mse_rf = mean_squared_error(rf_station_sum_df["USAGE"], rf_station_sum_df["predicted_USAGE"])
+    mae_rf = mean_absolute_error(rf_station_sum_df["USAGE"], rf_station_sum_df["predicted_USAGE"])
+    print("MSE MAE RF:", mse_rf, mae_rf)
 
-    fig.add_traces([trace_usage, trace_usage_rf])
+    plt.figure(figsize=(10, 6))
 
-    # Update layout and display the figure
-    fig.update_layout(title='Original and predicted usage overall')
-    fig.show()
-    
+    plt.plot(station_sum_df["TIME"], station_sum_df["USAGE"], linestyle='-', marker='', color='blue', label='Actual', linewidth=2)
+    plt.plot(rf_station_sum_df["TIME"], rf_station_sum_df["predicted_USAGE"], linestyle='-', marker='', color='red', label='Prediction', linewidth=2)
+
+    # separators
+    plt.axvline(x=PANDEMIC_DATE, color='k', linestyle='--')
+    plt.text(PANDEMIC_DATE, plt.ylim()[1] * 0.95, "Pandemic", color='k')
+
+    plt.xlabel('Week')
+    plt.ylabel('Bike Usage')
+    plt.title('Bike Usage Analysis - Pandemic')
+    plt.legend()
+
+    plt.show()

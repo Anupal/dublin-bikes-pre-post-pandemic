@@ -1,8 +1,4 @@
-import os
 import pandas as pd
-from datetime import datetime
-import matplotlib.pyplot as plt
-import sys
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
@@ -16,10 +12,6 @@ CUTOFF_DATE = pd.to_datetime("2020-03-01")
 if __name__ == "__main__":
     df = pd.read_csv("combined.csv")
 
-    # workaround: drop all lagged features
-    # df = df.drop(["USAGE_LAST_1H", "USAGE_LAST_1W", "UTILIZATION"], axis=1)
-
-
     df["TIME"] = pd.to_datetime(df["TIME"])
     time_column = df["TIME"]
 
@@ -27,7 +19,7 @@ if __name__ == "__main__":
     df = df[df["TIME"] < CUTOFF_DATE]
 
     # drop time and station id
-    training_df = df.drop(["TIME", "AVAILABLE BIKE STANDS"], axis=1)
+    training_df = df.drop(["TIME"], axis=1)
 
     # input and output
     x = training_df.drop(["USAGE"], axis=1)
@@ -63,4 +55,4 @@ if __name__ == "__main__":
     results = pd.DataFrame(grid_result.cv_results_)
     print(results)
 
-    results.to_csv("rf_cv_results2.csv")
+    results.to_csv("rf_cv_results.csv")
