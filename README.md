@@ -1,4 +1,6 @@
 # Dublin Bikes Pre/Post Pandemic
+This project was my final submission for **CS7CS4 - Machine Learning** course at **Trinity College Dublin**.
+I was tasked to analyze the impact of pandemic on Dublin Bikes and how the usage changed during post-pandemic period.
 
 ## Table of Contents
 1. [DATA PREPROCESSING AND FEATURE ENGINEERING](#DATA-PREPROCESSING-AND-FEATURE-ENGINEERING)
